@@ -38,7 +38,8 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh label list:*)"'
+          claude_args: |
+            --allowedTools "Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh label list:*)"
           prompt: |
             Analiza el issue #${{ github.event.issue.number }} de este repositorio
             (Tetris vanilla en HTML5 Canvas + CSS + JS, sin dependencias; ver CLAUDE.md
