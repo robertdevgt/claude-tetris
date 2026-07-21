@@ -1,0 +1,78 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Ensure controlled label set exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "bug" --color "d73a4a" --force
+          gh label create "enhancement" --color "a2eeef" --force
+          gh label create "question" --color "d876e3" --force
+          gh label create "gameplay" --color "0e8a16" --force
+          gh label create "rendering" --color "1d76db" --force
+          gh label create "controls" --color "5319e7" --force
+          gh label create "scoring" --color "fbca04" --force
+          gh label create "performance" --color "e99695" --force
+          gh label create "priority:high" --color "b60205" --force
+          gh label create "priority:medium" --color "fbca04" --force
+          gh label create "priority:low" --color "c2e0c6" --force
+
+      - name: Run Claude Code Issue Triage
+        id: claude-triage
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh label list:*)"'
+          prompt: |
+            Analiza el issue #${{ github.event.issue.number }} de este repositorio
+            (Tetris vanilla en HTML5 Canvas + CSS + JS, sin dependencias; ver CLAUDE.md
+            para la arquitectura de game.js: modelo de tablero, piezas, colisiones,
+            wall kicks, game loop, line clearing, scoring/leveling, ghost piece, rendering).
+
+            Pasos a seguir:
+
+            1. Lee el título y cuerpo del issue con `gh issue view ${{ github.event.issue.number }}`.
+
+            2. Analiza el problema en el contexto del código de este repo (game.js,
+               index.html, style.css) para entender qué componente(s) están involucrados.
+
+            3. Elige SOLO labels del siguiente conjunto controlado (no crees labels nuevas,
+               no uses otras que no estén en esta lista) y aplícalas con
+               `gh issue edit ${{ github.event.issue.number }} --add-label "..."`:
+               bug, enhancement, question, gameplay, rendering, controls, scoring,
+               performance, priority:high, priority:medium, priority:low.
+               Aplica solo las que realmente correspondan (normalmente 1-3 labels).
+
+            4. Publica UN ÚNICO comentario de diagnóstico en español con
+               `gh issue comment ${{ github.event.issue.number }} --body "..."` que incluya
+               estas secciones:
+               - **Resumen**: qué se está reportando o pidiendo.
+               - **Causa probable / componentes afectados**: referencia funciones y archivos
+                 concretos de game.js cuando aplique (p.ej. collide, tryRotate, clearLines,
+                 loop, draw, spawn).
+               - **Enfoque sugerido para la solución**: pasos concretos de alto nivel para
+                 abordarlo, sin escribir el código todavía.
+               - **Riesgos/edge cases**: cosas a tener en cuenta al implementar la solución.
+
+               Si el issue no tiene información suficiente para diagnosticar, dilo
+               explícitamente en el comentario y pide los detalles concretos que faltan
+               (pasos para reproducir, comportamiento esperado vs actual, etc.).
+
+            No modifiques código ni el cuerpo del issue. Tu única salida debe ser:
+            las labels aplicadas y el comentario de diagnóstico.
